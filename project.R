@@ -80,20 +80,13 @@ geweke.plot(metropolis_mcmc, nbins = 100)
 geweke.diag(metropolis_mcmc)
 
 # Question 3b
-HPD_pi <- HPDinterval(metropolis_mcmc)
-CI_pi <- quantile(metropolis$pi, probs = c(.025,.05,.5,.95,.975))
-cat("The 95% credible interval of pi: [", HPD_pi, "]" )
-cat("The quantile of pi: [", CI_pi, "]" )
+cat("The 95% credible interval of pi:")
+HPDinterval(metropolis_mcmc)
+cat("The quantile of pi: ")
+quantile(metropolis$pi, probs = c(.025,.05,.5,.95,.975))
 
 # Question 3c
-sub_data <- subset(data, age >= 20 & age <= 50)
-tmp_n <- nrow(sub_data)
-
-#generate random values from the posterior function data
-N <- 10000
-gama <- (1 + 35*0.09 ) / 36
-pi_post <- rbinom(N, tmp_n, gama)
-prob = mean(pi_post > 0.1)
+prob = mean(metropolis$pi)
 cat("The probability that the proportion of recent cannabis users is at least 10% amoung 20-59 years olds is:", prob)
 
 
@@ -121,20 +114,13 @@ geweke.plot(metropolis_men_mcmc, nbins = 100)
 geweke.diag(metropolis_men_mcmc)
 
 # 3b
-HPD_pi_men <- HPDinterval(metropolis_men_mcmc)
-CI_pi_men <- quantile(metropolis_men$pi, probs = c(.025,.05,.5,.95,.975))
-cat("The 95% credicle interval of pi for men: [", HPD_pi_men, "]" )
-cat("The quantile of pi for men: [", CI_pi_men, "]" )
+cat("The 95% credicle interval of pi for men: ")
+HPDinterval(metropolis_men_mcmc)
+cat("The quantile of pi for men: ")
+quantile(metropolis_men$pi, probs = c(.025,.05,.5,.95,.975))
 
 # 3c
-sub_men_data <- subset(sub_men, age >= 20 & age <= 50)
-tmp_men_n <- nrow(sub_men_data)
-
-#generate random values from the posterior function data
-pi_post_mean = mean(metropolis_men_mcmc) #posterior mean
-gama_men <- (1 + 35*pi_post_mean ) / 36
-pi_post_men <- rbinom(N, tmp_men_n, gama_men)
-prob_men = mean(pi_post_men > 0.1)
+prob_men = mean(metropolis_men$pi > .1)
 cat("The probability that the proportion of recent cannabis male users is at least 10% amoung 20-59 years olds is:", prob_men)
 
 
@@ -157,28 +143,23 @@ geweke.plot(metropolis_women_mcmc, nbins = 100)
 geweke.diag(metropolis_women_mcmc)
 
 # 3b
-HPD_pi_women <- HPDinterval(metropolis_women_mcmc)
-CI_pi_women <- quantile(metropolis_women$pi, probs = c(.025,.05,.5,.95,.975))
-cat("The 95% credicle interval of pi for women: [", HPD_pi_women, "]" )
-cat("The quantile of pi for women: ", CI_pi_women, "]" )
+cat("The 95% credible interval of pi for women:")
+HPDinterval(metropolis_women_mcmc)
+cat("The quantile of pi for women:")
+quantile(metropolis_women$pi, probs = c(.025,.05,.5,.95,.975))
 
 # 3c
-sub_women_data <- subset(sub_women, age >= 20 & age <= 50)
-tmp_women_n <- nrow(sub_women_data)
-
 #generate random values from the posterior function data
-pi_post_mean = mean(metropolis_women_mcmc) #posterior mean
-gama_women <- (1 + 35*pi_post_mean) / 36
-pi_post_women <- rbinom(N, tmp_women_n, gama_women)
-prob_women = mean(pi_post_women > 0.1)
+prob_women = mean(metropolis_women$pi > .1)
 cat("The probability that the proportion of recent cannabis female users is at least 10% amoung 20-59 years olds is:", prob_women)
 
 
 # C. Comparison between the proportion of men and women
 #*************************************
 mymodel = function(){
-  y1 ~ dbin(pi_men, n1)
-  y2 ~ dbin(pi_women, n2)  
+  y_men ~ dbin(pi_men, n1)
+  y_women ~ dbin(pi_women, n2)  
+  
   pi_men ~ dbeta(1.,1.) # Uniform prior
   pi_women ~ dbeta(1.,1.) # Uniform prior
   
@@ -188,11 +169,11 @@ mymodel = function(){
   odds2 <- pi_women / (1 - pi_women)
   gam <- odds1 / odds2
 }
-model.file = "proportionsComparison.bug"
+model.file = "models/proportionsComparison.bug"
 write.model(mymodel,model.file)
 
 # Data and initial values for model parameters
-mydata = list(n1=n_men, y1=y_men, n2=n_women, y2=y_women)
+mydata = list(n1=n_men, y_men=y_men, n2=n_women, y_women=y_women)
 inits = list(list(pi_men=.2, pi_women=.2))
 
 # Model specification
