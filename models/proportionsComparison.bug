@@ -1,0 +1,11 @@
+model
+{
+    y1 ~ dbin(pi_men, n1)
+    y2 ~ dbin(pi_women, n2)
+    pi_men ~ dbeta(1, 1)
+    pi_women ~ dbeta(1, 1)
+    delta <- pi_men - pi_women
+    odds1 <- pi_men/(1 - pi_men)
+    odds2 <- pi_women/(1 - pi_women)
+    gam <- odds1/odds2
+}
