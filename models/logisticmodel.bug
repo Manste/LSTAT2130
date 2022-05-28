@@ -1,0 +1,15 @@
+model
+{
+    for (i in 1:n) {
+        y[i] ~ dbern((1 + 35 * pi[i])/36)
+        logit(pi[i]) = (alpha0 + alpha1 * (age[i] - 40)) * male[i] + 
+            (beta0 + beta1 * (age[i] - 40)) * (1 - male[i])
+    }
+    tau = 1.00000E-06
+    alpha0 ~ dnorm(0.00000E+00, tau)
+    alpha1 ~ dnorm(0.00000E+00, tau)
+    beta0 ~ dnorm(0.00000E+00, tau)
+    beta1 ~ dnorm(0.00000E+00, tau)
+    delta = alpha1 - beta1
+    odds_25 = alpha0 + alpha1 * (25 - 40)
+}

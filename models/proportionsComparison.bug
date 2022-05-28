@@ -1,7 +1,7 @@
 model
 {
-    y_men ~ dbin(pi_men, n1)
-    y_women ~ dbin(pi_women, n2)
+    y_men ~ dbin((1 + 35 * pi_men)/36, n1)
+    y_women ~ dbin((1 + 35 * pi_women)/36, n2)
     pi_men ~ dbeta(1, 1)
     pi_women ~ dbeta(1, 1)
     delta <- pi_men - pi_women

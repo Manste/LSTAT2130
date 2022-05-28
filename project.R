@@ -5,7 +5,6 @@ library(R2WinBUGS)
 
 set.seed(33)
 
-
 # Prepare the Dataset
 data <- read.table(file = "cannabis.txt", header = TRUE, sep="")
 n <- nrow(data)
@@ -67,7 +66,10 @@ metropolis2 <- metropolis_algorithm(M, 0.05, sd_prop, n, y, burnin)
 metropolis3 <- metropolis_algorithm(M, 0.25, sd_prop, n, y, burnin)
 metropolis4 <- metropolis_algorithm(M, 0.5, sd_prop, n, y, burnin)
 
-group = list(metropolis_mcmc, mcmc(metropolis2$pi), mcmc(metropolis3$pi), mcmc(metropolis4$pi))
+group = list(metropolis_mcmc, 
+             mcmc(metropolis2$pi), 
+             mcmc(metropolis3$pi), 
+             mcmc(metropolis4$pi))
 
 traceplot(group)
 
@@ -82,12 +84,16 @@ geweke.diag(metropolis_mcmc)
 # Question 3b
 cat("The 95% credible interval of pi:")
 HPDinterval(metropolis_mcmc)
+cat("\n\n")
+
 cat("The quantile of pi: ")
 quantile(metropolis$pi, probs = c(.025,.05,.5,.95,.975))
+cat("\n\n")
 
 # Question 3c
-prob = mean(metropolis$pi)
-cat("The probability that the proportion of recent cannabis users is at least 10% amoung 20-59 years olds is:", prob)
+prob = mean(metropolis$pi > .1)
+cat("Probability of the proportion of recent cannabis users:", prob)
+cat("\n\n")
 
 
 #*************************************
@@ -104,6 +110,7 @@ y_men <- sum(sub_men$y)
 metropolis_men <- metropolis_algorithm(M, 0.05, sd_prop, n_men, y_men, burnin)
 metropolis_men_mcmc = mcmc(metropolis_men$pi)
 cat("Accpetance rate:", metropolis_men$accept_rate)
+cat("\n")
 
 #trace plot
 traceplot(mcmc(metropolis_men$pi))
@@ -114,14 +121,16 @@ geweke.plot(metropolis_men_mcmc, nbins = 100)
 geweke.diag(metropolis_men_mcmc)
 
 # 3b
-cat("The 95% credicle interval of pi for men: ")
+cat("The 95% credible interval of pi for men: ")
 HPDinterval(metropolis_men_mcmc)
 cat("The quantile of pi for men: ")
 quantile(metropolis_men$pi, probs = c(.025,.05,.5,.95,.975))
+cat("\n")
 
 # 3c
 prob_men = mean(metropolis_men$pi > .1)
-cat("The probability that the proportion of recent cannabis male users is at least 10% amoung 20-59 years olds is:", prob_men)
+cat("Probability of the proportion of recent cannabis male users :", prob_men)
+cat("\n\n")
 
 
 # A. For women
@@ -130,9 +139,10 @@ sub_women <- subset(data, male == 0)
 n_women <- nrow(sub_women)
 y_women <- sum(sub_women$y)
 # Run the metroplis algorithm
-metropolis_women <- metropolis_algorithm(M, 0.2, 0.025, n_women, y_women, burnin)
+metropolis_women <- metropolis_algorithm(M, .2, .025, n_women, y_women, burnin)
 metropolis_women_mcmc = mcmc(metropolis_women$pi)
 cat("Accpetance rate:", metropolis_women$accept_rate)
+cat("\n\n")
 
 #trace plot
 traceplot(mcmc(metropolis_women$pi))
@@ -145,20 +155,22 @@ geweke.diag(metropolis_women_mcmc)
 # 3b
 cat("The 95% credible interval of pi for women:")
 HPDinterval(metropolis_women_mcmc)
+cat("\n\n")
 cat("The quantile of pi for women:")
 quantile(metropolis_women$pi, probs = c(.025,.05,.5,.95,.975))
+cat("\n\n")
 
 # 3c
 #generate random values from the posterior function data
 prob_women = mean(metropolis_women$pi > .1)
-cat("The probability that the proportion of recent cannabis female users is at least 10% amoung 20-59 years olds is:", prob_women)
-
+cat("Probability of the proportion of recent cannabis female users:",prob_women)
+cat("\n\n")
 
 # C. Comparison between the proportion of men and women
 #*************************************
 mymodel = function(){
-  y_men ~ dbin(pi_men, n1)
-  y_women ~ dbin(pi_women, n2)  
+  y_men ~ dbin((1 + 35*pi_men)/36, n1)
+  y_women ~ dbin((1 + 35*pi_women)/36, n2)  
   
   pi_men ~ dbeta(1.,1.) # Uniform prior
   pi_women ~ dbeta(1.,1.) # Uniform prior
@@ -198,18 +210,50 @@ HPDinterval(out)
 #We create the model function
 logistic_model <- function(){
   #generate sample
-  for(i in 1:N) {
-    y[i] 
-  }
+  for(i in 1:n) {
+    y[i] ~ dbern((1 + 35*pi[i])/36)
+    logit(pi[i]) = (alpha0 + alpha1 * (age[i] - 40)) * male[i] + 
+      (beta0 + beta1 * (age[i] - 40)) * (1 - male[i])
+  }  
   tau = 1.0E-06
   # non informative prior
   alpha0 ~ dnorm(0, tau)
   alpha1 ~ dnorm(0, tau)
   beta0 ~ dnorm(0, tau)
   beta1 ~ dnorm(0, tau) 
+  
+  # difference between alpha1 and beta1
+  delta = alpha1 - beta1
+  
+  # odds of 25 years old men
+  odds_25 = alpha0 + alpha1 * (25 - 40)
 }
+model2.file = "models/logisticmodel.bug"
+write.model(logistic_model, model2.file)
+
+# Data and initial values for model parameters
+mydata2 = list(male=data$male, n=nrow(data), age=data$age, y=data$y)
+inits2 = list(list(alpha0=.2, alpha1=.2, beta0=.2, beta1=.2))
+
+# Model specification
+foo2 = jags.model(file=model2.file, data=mydata2, inits=inits2,
+                 n.chains=1)
+update(foo2, 1000)
+
+# Generation of the chain
+out2 <- coda.samples(model=foo2, 
+      variable.names=c("alpha0","alpha1", "beta0", "beta1", "delta", "odds_25"), 
+      n.iter=10000)
+out2.matrix <- as.matrix(out2)
 
 # Question 5b
-
+# Inspection of the generated chains
+summary(out2)
+HPDinterval(out2)
 
 # Question 5c
+post_dist_25 = sapply(out2.matrix[, "odds_25"], function(i) 1/(1 - exp(- i)))
+plot(density(post_dist_25),
+     main = "Density of posterior distribution for a 25 year old male.",
+     xlab = parse(text = paste0('~ post_dist_25')))
+summary(post_dist_25)
